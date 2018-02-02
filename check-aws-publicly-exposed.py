@@ -112,19 +112,7 @@ def generate_csv(data, args, header_name):
             writer.writerow(row)
 
 def init():
-    config_path = '/root/.aws/credentials'
-    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
-    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.environ.get('AWS_DEFAULT_REGION')
-    if aws_access_key and aws_secret_key and aws_region:
-        config_file = open(config_path, 'w')
-        config = ConfigParser.RawConfigParser()
-        config.add_section('key1')
-        config.set('key1', 'aws_access_key_id', aws_access_key)
-        config.set('key1', 'aws_secret_access_key', aws_secret_key)
-        config.set('key1', 'region', aws_region)
-        config.write(config_file)
-        return config.sections()
+    config_path = os.environ.get('HOME') + "/.aws/credentials"
     parser = ConfigParser.ConfigParser()
     parser.read(config_path)
     if parser.sections():
@@ -136,15 +124,24 @@ def main():
     parser = argparse.ArgumentParser(description="Analyse reserved instances")
     parser.add_argument("--profile", nargs="+", help="Specify AWS profile(s) (stored in ~/.aws/credentials) for the program to use")
     parser.add_argument("-o", nargs="?", help="Specify output csv file")
+    parser.add_argument("--profiles-all", nargs="?", help="Run it on all profile")
+    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.environ.get('AWS_DEFAULT_REGION')
     args = vars(parser.parse_args())
-    if args['profile']:
+    if 'profiles-all' in args:
+        keys = init()
+    elif 'profile' in args and args['profile']:
         keys = args['profile']
     else:
         keys = init()
     for key in keys:
         print 'Processing %s...' % key
         try:
-            session = boto3.Session(profile_name=key)
+            if aws_access_key and aws_secret_key and aws_region:
+                session = boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key, region_name=aws_region)
+            else:
+                session = boto3.Session(profile_name=key)
             regions = get_regions(session)
             data += get_ec2_ips(session, regions, key)
             data += get_elb_ips(session, regions, key)
