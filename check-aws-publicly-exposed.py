@@ -5,6 +5,7 @@ import pprint
 import argparse
 import ConfigParser
 import os
+import re
 
 def get_ec2_name(tags):
     for tag in tags:
@@ -53,15 +54,16 @@ def get_elb_ips(session, regions, account):
         client = session.client('elb', region_name=region)
         response = client.describe_load_balancers()
         for lb in response['LoadBalancerDescriptions']:
-            res += [
-                {
-                    'account': account,
-                    'service': 'elb',
-                    'name': lb['DNSName'],
-                    'sg': "NA",
-                    'port_exposed': get_port_exposed_elb(lb['ListenerDescriptions'])
-                }
-            ]
+            if not re.match(r'^internal', lb['DNSName']):
+                res += [
+                    {
+                        'account': account,
+                        'service': 'elb',
+                        'name': lb['DNSName'],
+                        'sg': "NA",
+                        'port_exposed': get_port_exposed_elb(lb['ListenerDescriptions'])
+                    }
+                ]
     return res
 
 
